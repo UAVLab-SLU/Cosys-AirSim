@@ -427,6 +427,7 @@
       <TreatWarningAsError>true</TreatWarningAsError>
       <AdditionalOptions>/w34263 /w34266 %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <WholeProgramOptimization>false</WholeProgramOptimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
