@@ -6,13 +6,13 @@
 // Overwrite the material
 
 #include "Runtime/CoreUObject/Public/UObject/ConstructorHelpers.h"
-#include "Runtime/Engine/Public/Materials/Material.h"
-#include "Runtime/Engine/Public/Materials/MaterialInstanceDynamic.h"
-#include "Runtime/Engine/Classes/Engine/StaticMesh.h"
-#include "Runtime/Engine/Classes/Components/SkeletalMeshComponent.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Engine/StaticMesh.h"
+#include "Components/SkeletalMeshComponent.h"
 #include "Runtime/Launch/Resources/Version.h"
-#include "Runtime/Engine/Public/MaterialShared.h"
-#include "Runtime/Engine/Classes/Engine/Engine.h"
+#include "Materials/MaterialRenderProxy.h"
+#include "Engine/Engine.h"
 #include "AirBlueprintLib.h"
 
 #if ENGINE_MAJOR_VERSION >= 5
@@ -370,14 +370,14 @@ FPrimitiveSceneProxy* UAnnotationComponent::CreateSceneProxy(USkeletalMeshCompon
 {
 	UMaterialInterface* ProxyMaterial = AnnotationMID; // Material Instance Dynamic
 
-	ERHIFeatureLevel::Type SceneFeatureLevel = GetWorld()->GetFeatureLevel();
+	ERHIFeatureLevel::Type SceneFeatureLevel = GetWorld()->FeatureLevel;
 
 	// Ref: https://github.com/EpicGames/UnrealEngine/blob/4.19/Engine/Source/Runtime/Engine/Private/Components/SkinnedMeshComponent.cpp#L415
 	FSkeletalMeshRenderData* SkelMeshRenderData = SkeletalMeshComponent->GetSkeletalMeshRenderData();
 
 	// Only create a scene proxy for rendering if properly initialized
 	if (SkelMeshRenderData &&
-		SkelMeshRenderData->LODRenderData.IsValidIndex(SkeletalMeshComponent->GetPredictedLODLevel()) &&
+		SkelMeshRenderData->LODRenderData.IsValidIndex(SkeletalMeshComponent->PredictedLODLevel) &&
 		SkeletalMeshComponent->MeshObject) // The risk of using MeshObject
 	{
 		// Only create a scene proxy if the bone count being used is supported, or if we don't have a skeleton (this is the case with destructibles)
@@ -432,7 +432,7 @@ FPrimitiveSceneProxy* UAnnotationComponent::CreateSceneProxy()
 	// }
 	else
 	{
-		//UE_LOG(LogTemp, Warning, TEXT("AirSim Annotation: The type of ParentMeshComponent : %s can not be supported."), *ParentComponent->GetClass()->GetName());
+		UE_LOG(LogTemp, Warning, TEXT("AirSim Annotation: The type of ParentMeshComponent : %s can not be supported."), *ParentComponent->GetClass()->GetName());
 		return nullptr;
 	}
 	// return nullptr;

@@ -4,10 +4,14 @@
 #include "ObjectAnnotator.h"
 #include "Runtime/Engine/Public/EngineUtils.h"
 #include "SceneInterface.h"
-#include "../Private/ScenePrivate.h"
+// Temporarily disable ScenePrivate.h include due to BlueNoise.h missing in UE 5.5
+// #include "Runtime/Engine/Public/PrimitiveSceneProxy.h"
+#include "Runtime/Renderer/Public/PrimitiveSceneInfo.h"
 #include "Runtime/Launch/Resources/Version.h"
 #include "AnnotationComponent.h"
 #include "AirBlueprintLib.h"
+#include "PrimitiveSceneProxy.h"
+#include "PrimitiveSceneInfo.h"
 
 // For UE4 < 17
 // check https://github.com/unrealcv/unrealcv/blob/1369a72be8428547318d8a52ae2d63e1eb57a001/Source/UnrealCV/Private/Controller/ObjectAnnotator.cpp#L1

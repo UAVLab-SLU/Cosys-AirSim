@@ -535,12 +535,37 @@ private:
     std::map<uint16_t, input_absinfo> absinfo_map;
 };
 
+#elif defined __APPLE__
+
+struct SimJoyStick::impl
+{
+    void getJoyStickState(int /*index*/, SimJoyStick::State& state, const AxisMaps& /*maps*/) {
+        state.is_initialized = false;
+        state.is_valid = false;
+    }
+    void setAutoCenter(int /*index*/, double /*strength*/) {}
+    void setWheelRumble(int /*index*/, double /*strength*/) {}
+};
+
+#else
+
+struct SimJoyStick::impl
+{
+    void getJoyStickState(int /*index*/, SimJoyStick::State& state, const AxisMaps& /*maps*/) {
+        state.is_initialized = false;
+        state.is_valid = false;
+    }
+    void setAutoCenter(int /*index*/, double /*strength*/) {}
+    void setWheelRumble(int /*index*/, double /*strength*/) {}
+};
+
 #endif
 
 SimJoyStick::SimJoyStick()
 {
     pimpl_.reset(new impl());
 }
+
 SimJoyStick::~SimJoyStick()
 {
     //required for pimpl
