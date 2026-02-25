@@ -4,7 +4,9 @@
 #include "ObjectAnnotator.h"
 #include "Runtime/Engine/Public/EngineUtils.h"
 #include "SceneInterface.h"
+#if !PLATFORM_LINUX
 #include "../Private/ScenePrivate.h"
+#endif
 #include "Runtime/Launch/Resources/Version.h"
 #include "AnnotationComponent.h"
 #include "AirBlueprintLib.h"
@@ -75,6 +77,7 @@ void FObjectAnnotator::getPaintableComponentMeshes(AActor* actor, TMap<FString, 
 	for (auto component : paintable_components)
 	{
 		int32 PersistentPrimitiveIndex = component->GetUniqueID();
+#if !PLATFORM_LINUX
 		if (const UPrimitiveComponent* PrimitiveComp = Cast<UPrimitiveComponent>(component))
 		{
 			if (const FPrimitiveSceneProxy* SceneProxy = PrimitiveComp->SceneProxy)
@@ -84,6 +87,7 @@ void FObjectAnnotator::getPaintableComponentMeshes(AActor* actor, TMap<FString, 
 					PersistentPrimitiveIndex = PersistentPrimitiveIndexTemp;
 			}
 		}
+#endif
 		if (paintable_components.Num() == 1) {
 			if (UStaticMeshComponent* staticmesh_component = Cast<UStaticMeshComponent>(component)) {
 				if (actor->GetParentActor()) {
@@ -173,6 +177,7 @@ void FObjectAnnotator::getPaintableComponentMeshesAndTags(AActor* actor, TMap<FS
 	for (auto component : paintable_components)
 	{
 		int32 PersistentPrimitiveIndex = component->GetUniqueID();
+#if !PLATFORM_LINUX
 		if (const UPrimitiveComponent* PrimitiveComp = Cast<UPrimitiveComponent>(component))
 		{
 			if (const FPrimitiveSceneProxy* SceneProxy = PrimitiveComp->SceneProxy)
@@ -182,6 +187,7 @@ void FObjectAnnotator::getPaintableComponentMeshesAndTags(AActor* actor, TMap<FS
 					PersistentPrimitiveIndex = PersistentPrimitiveIndexTemp;
 			}
 		}
+#endif
 		if (paintable_components.Num() == 1) {
 			if (UStaticMeshComponent* staticmesh_component = Cast<UStaticMeshComponent>(component)) {
 				if (actor->GetParentActor()) {

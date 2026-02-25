@@ -977,7 +977,7 @@ void APIPCamera::setNoiseMaterial(int image_type, UObject* outer, FPostProcessSe
 		obj.AddBlendable(lens_distortion_material_, 1.0f);
 	}
 
-    if (settings.FakeMotionBlurEnable) {
+    if (settings.FakeMotionBlurEnable && motion_blur_material_static_) {
         UMaterialInstanceDynamic* motion_blur_material = UMaterialInstanceDynamic::Create(motion_blur_material_static_, outer);
         fake_motion_blur_materials_[image_type + 1] = motion_blur_material;
         
@@ -990,7 +990,7 @@ void APIPCamera::setNoiseMaterial(int image_type, UObject* outer, FPostProcessSe
 
         obj.AddBlendable(motion_blur_material, 1.0f);
     }
-    if (settings.RadialBlurEnable) {
+    if (settings.RadialBlurEnable && radial_blur_material_static_) {
         UMaterialInstanceDynamic* radial_blur_material = UMaterialInstanceDynamic::Create(radial_blur_material_static_, outer);
         radial_blur_materials_[image_type + 1] = radial_blur_material;
 
@@ -1000,7 +1000,7 @@ void APIPCamera::setNoiseMaterial(int image_type, UObject* outer, FPostProcessSe
 
         obj.AddBlendable(radial_blur_material, 1.0f);
     }
-    if (settings.GuassianBlurEnable) {
+    if (settings.GuassianBlurEnable && guassian_blur_material_static_) {
         UMaterialInstanceDynamic* guassian_blur_material = UMaterialInstanceDynamic::Create(guassian_blur_material_static_, outer);
         guassian_blur_materials_[image_type + 1] = guassian_blur_material;
 
