@@ -16,6 +16,7 @@ class AIRSIM_API ASimModeWorldMultiRotor : public ASimModeWorldBase
 public:
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+    virtual void Tick(float DeltaSeconds) override;
 
 protected: //overrides
     virtual void setupClockSpeed() override;
@@ -32,5 +33,13 @@ protected: //overrides
                                                        const PawnSimApi* sim_api) const override;
 
 private:
+    bool isWorldReadyForPhysics() const;
+    bool areCesiumTilesetsReady() const;
+    bool hasBlockingSurfaceBelow(APawn* pawn) const;
+
     typedef AFlyingPawn TVehiclePawn;
+
+    bool physics_updater_started_ = false;
+    float ready_stable_elapsed_ = 0.0f;
+    float startup_wait_log_elapsed_ = 0.0f;
 };

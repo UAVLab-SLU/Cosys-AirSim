@@ -9,7 +9,7 @@ void ASimModeWorldBase::BeginPlay()
     Super::BeginPlay();
 }
 
-void ASimModeWorldBase::initializeForPlay()
+void ASimModeWorldBase::initializeForPlay(bool start_async_updator)
 {
     std::vector<msr::airlib::UpdatableObject*> vehicles;
     for (auto& api : getApiProvider()->getVehicleSimApis())
@@ -20,7 +20,9 @@ void ASimModeWorldBase::initializeForPlay()
     physics_engine_ = physics_engine.get();
     physics_world_.reset(new msr::airlib::PhysicsWorld(std::move(physics_engine),
                                                        vehicles,
-                                                       getPhysicsLoopPeriod()));
+                                                       getPhysicsLoopPeriod(),
+                                                       false,
+                                                       start_async_updator));
 }
 
 void ASimModeWorldBase::registerPhysicsBody(msr::airlib::VehicleSimApiBase* physicsBody)

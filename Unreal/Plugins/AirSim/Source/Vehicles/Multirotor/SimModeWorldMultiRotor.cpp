@@ -5,7 +5,11 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Logging/MessageLog.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/PrimitiveComponent.h"
+#include "UObject/UObjectGlobals.h"
+#include "WorldPartition/WorldPartitionSubsystem.h"
 
 #include "AirBlueprintLib.h"
 #include "vehicles/multirotor/api/MultirotorApiBase.hpp"
@@ -20,16 +24,149 @@ void ASimModeWorldMultiRotor::BeginPlay()
 {
     Super::BeginPlay();
 
-    //let base class setup physics world
-    initializeForPlay();
+    // Set up the physics world without starting its asynchronous updater. On a
+    // cold load, streamed terrain collision may not exist yet. Starting AirSim
+    // physics here would apply gravity before the pawn can collide with it.
+    initializeForPlay(false);
+
+    UAirBlueprintLib::LogMessage(
+        TEXT("AirSim physics waiting for terrain collision"),
+        TEXT(""),
+        LogDebugLevel::Informational);
 }
 
 void ASimModeWorldMultiRotor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    //stop physics thread before we dismantle
-    stopAsyncUpdator();
+    // Stop the physics thread before we dismantle it, if startup reached the
+    // point where the thread was created.
+    if (physics_updater_started_)
+        stopAsyncUpdator();
 
     Super::EndPlay(EndPlayReason);
+}
+
+void ASimModeWorldMultiRotor::Tick(float DeltaSeconds)
+{
+    Super::Tick(DeltaSeconds);
+
+    if (physics_updater_started_)
+        return;
+
+    startup_wait_log_elapsed_ += DeltaSeconds;
+
+    if (!isWorldReadyForPhysics()) {
+        ready_stable_elapsed_ = 0.0f;
+
+        if (startup_wait_log_elapsed_ >= 5.0f) {
+            startup_wait_log_elapsed_ = 0.0f;
+            UAirBlueprintLib::LogMessage(
+                TEXT("AirSim physics still waiting for terrain collision"),
+                TEXT(""),
+                LogDebugLevel::Informational);
+        }
+        return;
+    }
+
+    // Cesium may briefly report a usable collision surface while replacing
+    // coarse tiles with the requested LOD. Require the complete readiness state
+    // to remain stable long enough for Chaos collision changes to settle.
+    constexpr float RequiredReadySeconds = 0.5f;
+    ready_stable_elapsed_ += DeltaSeconds;
+    if (ready_stable_elapsed_ < RequiredReadySeconds)
+        return;
+
+    // PhysicsWorld already reset every vehicle during initializeForPlay(). Do
+    // not reset again here: AirSim requires an update between reset calls.
+    startAsyncUpdator();
+    physics_updater_started_ = true;
+
+    UAirBlueprintLib::LogMessage(
+        TEXT("AirSim terrain collision ready; multirotor physics started"),
+        TEXT(""),
+        LogDebugLevel::Success);
+}
+
+bool ASimModeWorldMultiRotor::isWorldReadyForPhysics() const
+{
+    UWorld* world = GetWorld();
+    if (world == nullptr || world->IsVisibilityRequestPending())
+        return false;
+
+    UWorldPartitionSubsystem* world_partition = world->GetSubsystem<UWorldPartitionSubsystem>();
+    if (world_partition != nullptr && !world_partition->IsAllStreamingCompleted())
+        return false;
+
+    if (!areCesiumTilesetsReady())
+        return false;
+
+    const auto& vehicle_sim_apis = getApiProvider()->getVehicleSimApis();
+    for (auto* vehicle_sim_api : vehicle_sim_apis) {
+        auto* multirotor_sim_api = static_cast<MultirotorPawnSimApi*>(vehicle_sim_api);
+        if (multirotor_sim_api != nullptr && !hasBlockingSurfaceBelow(multirotor_sim_api->getPawn()))
+            return false;
+    }
+
+    return true;
+}
+
+bool ASimModeWorldMultiRotor::areCesiumTilesetsReady() const
+{
+    // Keep Cesium optional. If its runtime module is present, discover the
+    // tileset class and call its reflected GetLoadProgress function without a
+    // compile-time dependency from AirSim to CesiumRuntime.
+    UClass* tileset_class = FindObject<UClass>(
+        nullptr,
+        TEXT("/Script/CesiumRuntime.Cesium3DTileset"));
+    if (tileset_class == nullptr)
+        return true;
+
+    UFunction* get_load_progress = tileset_class->FindFunctionByName(TEXT("GetLoadProgress"));
+    if (get_load_progress == nullptr)
+        return false;
+
+    struct FGetLoadProgressParams
+    {
+        float ReturnValue = 0.0f;
+    };
+
+    for (TActorIterator<AActor> actor_it(GetWorld(), tileset_class); actor_it; ++actor_it) {
+        AActor* tileset = *actor_it;
+        if (!IsValid(tileset) || tileset->IsHidden())
+            continue;
+
+        FGetLoadProgressParams params;
+        tileset->ProcessEvent(get_load_progress, &params);
+        if (params.ReturnValue < 100.0f)
+            return false;
+    }
+
+    return true;
+}
+
+bool ASimModeWorldMultiRotor::hasBlockingSurfaceBelow(APawn* pawn) const
+{
+    if (pawn == nullptr)
+        return false;
+
+    UPrimitiveComponent* root = Cast<UPrimitiveComponent>(pawn->GetRootComponent());
+    if (root == nullptr || !root->IsQueryCollisionEnabled())
+        return false;
+
+    constexpr float StartupProbeDepth = 1000000.0f; // 10 km in default UE units
+    constexpr float StartupProbeOffset = 100.0f;
+    const FVector start = root->GetComponentLocation() + FVector(0.0f, 0.0f, StartupProbeOffset);
+    const FVector end = start - FVector(0.0f, 0.0f, StartupProbeDepth);
+
+    FCollisionQueryParams query_params(SCENE_QUERY_STAT(AirSimStartupTerrainProbe), false, pawn);
+    query_params.AddIgnoredActor(pawn);
+
+    FHitResult hit;
+    return pawn->GetWorld()->LineTraceSingleByChannel(
+        hit,
+        start,
+        end,
+        root->GetCollisionObjectType(),
+        query_params);
 }
 
 void ASimModeWorldMultiRotor::setupClockSpeed()
